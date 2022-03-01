@@ -23,16 +23,18 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 
-# "Training: Train perceptrons with three different learning rates:
-# "   η = 0.001, 0.01, and 0.1.
-ETA = (0.001, 0.01, 0.1)
+# "Set the learning rate to 0.1 and the momentum to 0.9.
+ETA = 0.1
+MOMENTUM = 0.9
 
-# "Keep repeating until the accuracy on the training data has essentially stopped improving (i.e., the
-# "difference between training accuracy from one epoch to the next is less than some small number,
-# "like .01,) or you have run for 70 epochs (iterations through the training set), whichever comes first.
-#
-MAX_EPOCHS = 30  # my training results converge much sooner than 70 epochs, however,
-ACCURACY_DIFF = 0.01  # my training accuracy fluctuates just enough that this never seems particularly useful
+# "Train your network for 50 epochs"
+MAX_EPOCHS = 50
+
+
+# "Experiment 1: Vary number of hidden units.
+# "Do experiments with n = 20, 50, and 100.
+# "(Remember to also include a bias unit with weights to every hidden and output node.)
+N = 20
 
 
 # class for loading and preprocessing MNIST data
@@ -80,14 +82,15 @@ class ConfusionMatrix:
         self.matrix[true][pred] += 1
 
 
-# "You will use a perceptron with 785 inputs (including bias input)
-# "and 10 outputs
-class Perceptron:
+# "Your neural network will have 784 inputs, one hidden layer with
+# "n hidden units (where n is a parameter of your program), and 10 output units.
+class NeuralNetwork:
     def __init__(self, eta):
-        print("Initializing perceptron...")
-        # Choose small random initial weights, 𝑤! ∈ [−.05, .05]
-        # self.weights = np.random.uniform(-0.05, 0.05, (10, 785))
-        self.weights = np.array([np.random.uniform(-0.05, 0.05, 785) for _ in range(10)])
+        print("Initializing neural network...")
+        # "Choose small random initial weights, 𝑤! ∈ [−.05, .05]
+        self.hidden_layer_weights = np.array([np.random.uniform(-0.05, 0.05, 785) for _ in range(N + 1)])
+        self.units = np.random.uniform(-0.05, 0.05, N)
+        self.output_layer_weights = np.array(np.random.uniform(-0.05, 0.05, N) for _ in range(10 + 1))
         self.outputs = np.zeros(10)
         self.eta = eta
 
@@ -174,33 +177,30 @@ class Perceptron:
 
 def main():
 
-    # generate results for each of the given step sizes
-    for eta in ETA:
+    d = Data()
+    p = NeuralNetwork(ETA)
+    c = ConfusionMatrix()
 
-        d = Data()
-        p = Perceptron(eta)
-        c = ConfusionMatrix()
+    results = p.run(d, c, MAX_EPOCHS)
 
-        results = p.run(d, c, MAX_EPOCHS)
+    # plot the training / testing accuracy
+    plt.plot(list(range(MAX_EPOCHS + 1)), results[0])
+    plt.plot(list(range(MAX_EPOCHS + 1)), results[1])
+    plt.xlim([0, MAX_EPOCHS])
+    plt.ylim([0, 1])
+    plt.show()
 
-        # plot the training / testing accuracy
-        plt.plot(list(range(MAX_EPOCHS + 1)), results[0])
-        plt.plot(list(range(MAX_EPOCHS + 1)), results[1])
-        plt.xlim([0, MAX_EPOCHS])
-        plt.ylim([0, 1])
-        plt.show()
-
-        # plot the confusion matrix
-        for i in range(10):
-            plt.plot([-0.5, 9.5], [i+0.5, i+0.5], i, color='xkcd:chocolate', linewidth=1)  # nice colors
-            plt.plot([i+0.5, i+0.5], [-0.5, 9.5], i, color='xkcd:chocolate', linewidth=1)
-            for j in range(10):
-                plt.scatter(i, j, s=(c.matrix[i][j] / 3), c="xkcd:fuchsia", marker="s")  # or chartreuse
-                plt.annotate(int(c.matrix[i][j]), (i, j))
-        plt.xlim([-0.5, 9.5])
-        plt.ylim([-0.5, 9.5])
-        plt.gca().invert_yaxis()
-        plt.show()
+    # plot the confusion matrix
+    for i in range(10):
+        plt.plot([-0.5, 9.5], [i+0.5, i+0.5], i, color='xkcd:chocolate', linewidth=1)  # nice colors
+        plt.plot([i+0.5, i+0.5], [-0.5, 9.5], i, color='xkcd:chocolate', linewidth=1)
+        for j in range(10):
+            plt.scatter(i, j, s=(c.matrix[i][j] / 3), c="xkcd:fuchsia", marker="s")  # or chartreuse
+            plt.annotate(int(c.matrix[i][j]), (i, j))
+    plt.xlim([-0.5, 9.5])
+    plt.ylim([-0.5, 9.5])
+    plt.gca().invert_yaxis()
+    plt.show()
 
 
 if __name__ == '__main__':
