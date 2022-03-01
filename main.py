@@ -24,7 +24,7 @@ from matplotlib import pyplot as plt
 from math import exp
 
 # set some data caps since this takes so long
-MAX_TRAIN = 100
+MAX_TRAIN = 1000
 MAX_TEST = 100
 
 
@@ -167,7 +167,7 @@ class NeuralNetwork:
 
             elif not freeze:
                 output_error = np.empty(10)
-                hidden_error = np.empty(N)
+                hidden_error = np.empty(N + 1)
 
                 # "For each output unit k, calculate error term δ_k
                 # δ_k <- o_k (1 - o_k) (t_k - o_k)
@@ -176,7 +176,9 @@ class NeuralNetwork:
                 # I am guessing -1 is true value when it's wrong
                 # and 1 is true value when its right
                 for k, o_k in enumerate(self.output_layer):
-                    t_k = 1 if truth == o_k else -1
+                    # "Set the target value tk for output unit k to 0.9 if the input class is the kth class,
+                    # "0.1 otherwise
+                    t_k = 0.9 if truth == k else 0.1  # had truth == o_k instead of truth == the index
 
                     error = o_k * (1 - o_k) * (t_k - o_k)
                     output_error[k] = error
@@ -191,7 +193,7 @@ class NeuralNetwork:
                         total += self.output_layer_weights[j][k] * output_error[k]
 
                     error = h_j * (1 - h_j) * total
-                    np.append(hidden_error, error)
+                    hidden_error[j] = error  # oops was appending still
 
                 # "Hidden to Output layer: For each weight w_kj
                 # w_kj = w_kj + Δw_kj
