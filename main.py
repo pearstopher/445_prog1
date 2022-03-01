@@ -23,13 +23,17 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from math import exp
 
+# set some data caps since this takes so long
+MAX_TRAIN = 100
+MAX_TEST = 100
+
 
 # "Set the learning rate to 0.1 and the momentum to 0.9.
 ETA = 0.1
 MOMENTUM = 0.9
 
 # "Train your network for 50 epochs"
-MAX_EPOCHS = 1
+MAX_EPOCHS = 30
 
 
 # "Experiment 1: Vary number of hidden units.
@@ -72,9 +76,13 @@ class Data:
         return data, ground_truth
 
     def test(self):
+        if MAX_TEST:
+            return self.testing_data[0:MAX_TEST], self.testing_truth[0:MAX_TEST]
         return self.testing_data, self.testing_truth
 
     def train(self):
+        if MAX_TRAIN:
+            return self.training_data[0:MAX_TRAIN], self.training_truth[0:MAX_TRAIN]
         return self.training_data, self.training_truth
 
 
@@ -107,10 +115,10 @@ class NeuralNetwork:
         #
         # "Choose small random initial weights, 𝑤! ∈ [−.05, .05]
         self.hidden_layer_weights = np.random.uniform(-0.05, 0.05, (785, N + 1))
-        self.hidden_layer = np.zeros((1, N+1))
+        self.hidden_layer = np.zeros((N+1))
         self.hidden_layer[0] = 1  # bias
         self.output_layer_weights = np.random.uniform(-0.05, 0.05, (N+1, 10))
-        self.output_layer = np.zeros((1, 10))
+        self.output_layer = np.zeros((10))
 
     # "The activation function for each hidden and output unit is the sigmoid function
     # σ(z) = 1 / ( 1 + e^(-z) )
@@ -124,27 +132,29 @@ class NeuralNetwork:
     def compute_accuracy(self, data, freeze=False, matrix=None):
         num_correct = 0
 
-        #####################
-        # FORWARD PROPAGATION
-        #####################
-
         # for each item in the dataset
         for d, truth in zip(data[0], data[1]):
+
+            #####################
+            # FORWARD PROPAGATION
+            #####################
 
             # "For each node j in the hidden layer (i = input layer)
             # h_j = σ ( Σ_i ( w_ji x_i + w_j0 ) )
             self.hidden_layer = np.dot(d, self.hidden_layer_weights)
             self.hidden_layer = np.array([self.sigmoid(x) for x in self.hidden_layer])
+            # print(self.hidden_layer)  # these are the right size as expected
 
             # "For each node k in the output layer (j = hidden layer)
             # o_k = σ ( Σ_j ( w_kj h_j + w_k0 ) )
             self.output_layer = np.dot(self.hidden_layer, self.output_layer_weights)
             self.output_layer = np.array([self.sigmoid(x) for x in self.output_layer])
+            # print(self.output_layer)  # these are the right size as expected
 
             # (for report)
             # add our result to the confusion matrix
             if matrix:
-                matrix.insert(int(d[0]), int(np.argmax(self.output_layer)))
+                matrix.insert(int(np.argmax(self.output_layer)), int(truth), )  # x=pred, y=true
 
             # "If this is the correct prediction, don’t change the weights and
             # "go on to the next training example.
@@ -154,35 +164,48 @@ class NeuralNetwork:
             ##################
             # BACK-PROPAGATION
             ##################
-            #
-            # "Otherwise, update all weights in the perceptron:
-            # "    𝑤i ⟵ 𝑤i + 𝜂( 𝑡(i) − 𝑦(i) ) 𝑥i(i) , where
-            # "
-            # "    t(i) = { 1 if the output unit is the correct one for this training example
-            # "           { 0 otherwise
-            # "
-            # "    y(i) = { 1 if 𝒘 ∙ 𝒙(i) > 0
-            # "           { 0 otherwise
-            # "
-            # "Thus, 𝑡(i) − 𝑦(i) can be 1, 0, or −1.
-            # "
-            # "(Note that this means that for some output units 𝑡(i) − 𝑦(i) could be zero,
-            # " and thus the weights to that output unit would not be updated,
-            # " even if the prediction was incorrect. That’s okay!)
-            #
-            #
-            # elif not freeze:
-            #     # for each perceptron
-            #     for i in range(10):
-            #         ti = 1 if i == d[0] else 0
-            #         yi = 1 if self.outputs[i] > 0 else 0  # self.outputs[i] is already w dot x(i)
-            #         # np.add(ETA*(ti - yi), self.weights) # self.weights, out=self.weights,
-            #
-            #         # update the weights as a function of ti, yi, and the elements in both arrays
-            #         temp = d[0]
-            #         d[0] = 1
-            #         self.weights[i] = np.array([(wi + self.eta*(ti - yi)*xii) for wi, xii in zip(self.weights[i], d)])
-            #         d[0] = temp
+
+            elif not freeze:
+                output_error = np.empty(10)
+                hidden_error = np.empty(N)
+
+                # "For each output unit k, calculate error term δ_k
+                # δ_k <- o_k (1 - o_k) (t_k - o_k)
+                #
+                # t = true value
+                # I am guessing -1 is true value when it's wrong
+                # and 1 is true value when its right
+                for k, o_k in enumerate(self.output_layer):
+                    t_k = 1 if truth == o_k else -1
+
+                    error = o_k * (1 - o_k) * (t_k - o_k)
+                    output_error[k] = error
+
+                # "for each hidden unit j, calculate error term δ_j (k = output units)
+                # δ_j <- h_j (1 - h_j) (Σ_k ( w_kj * δ_k ) )
+                for j, h_j in enumerate(self.hidden_layer):
+                    # calculate sum
+                    total = 0
+                    # print(self.output_layer)
+                    for k in range(len(self.output_layer)):
+                        total += self.output_layer_weights[j][k] * output_error[k]
+
+                    error = h_j * (1 - h_j) * total
+                    np.append(hidden_error, error)
+
+                # "Hidden to Output layer: For each weight w_kj
+                # w_kj = w_kj + Δw_kj
+                # Δw_kj = η * δ_k * h_j
+                for k in range(10):
+                    for j in range(N):
+                        self.output_layer_weights[j][k] += self.eta * output_error[k] * self.hidden_layer[j]
+
+                # "Input to Hidden layer: For each weight w_ji
+                # w_ji = w_ji + Δw_ji
+                # Δw_ji = η * δ_j * x_i
+                for j in range(N):
+                    for i in range(785):
+                        self.hidden_layer_weights[i][j] += self.eta * hidden_error[j] * d[i]
 
         # return accuracy
         return num_correct / len(data[0])
