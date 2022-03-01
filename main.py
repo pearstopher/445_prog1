@@ -88,10 +88,14 @@ class NeuralNetwork:
     def __init__(self, eta):
         print("Initializing neural network...")
         # "Choose small random initial weights, 𝑤! ∈ [−.05, .05]
+        #
+        # "Recall that the bias unit is always set to 1,
+        # "and the bias weight is treated like any other weight.
         self.hidden_layer_weights = np.array([np.random.uniform(-0.05, 0.05, 785) for _ in range(N + 1)])
-        self.units = np.random.uniform(-0.05, 0.05, N)
+        self.hidden_layer = np.random.uniform(-0.05, 0.05, N + 1) # hidden units
+        self.hidden_layer[0] = 1  # hidden bias unit value
         self.output_layer_weights = np.array(np.random.uniform(-0.05, 0.05, N) for _ in range(10 + 1))
-        self.outputs = np.zeros(10)
+        self.output_layer = np.zeros(10)
         self.eta = eta
 
     # "Compute the accuracy on the training and test sets for this initial set of weights,
@@ -99,27 +103,40 @@ class NeuralNetwork:
     def compute_accuracy(self, data, freeze=False, matrix=None):
         num_correct = 0
 
+        #####################
+        # FORWARD PROPAGATION
+        #####################
+
         # for each item in the dataset
         for d in data:
-            # for each of the ten perceptrons
-            for i in range(10):
-                # "Recall that the bias unit is always set to 1,
-                # "and the bias weight is treated like any other weight.
+            # for each of the hidden units + bias
+            for i in range(N):
+                # save the true value and replace with input bias
                 temp = d[0]
                 d[0] = 1
-                # "Compute 𝒘 ∙ 𝒙 (i) at each output unit.
-                self.outputs[i] = np.dot(self.weights[i], d)
+                # Compute 𝒘 ∙ 𝒙 (i) at each hidden unit.
+                self.hidden_layer[i + 1] = np.dot(self.hidden_layer_weights[i], d)  # +1 to skip bias unit
                 d[0] = temp
+
+            # for each of the output units + bias
+            for i in range(10):
+                # the bias value is already built in to this array
+                # Compute 𝒘 ∙ 𝒙 (i) at each output unit.
+                self.output_layer[i] = np.dot(self.output_layer_weights[i], self.hidden_layer[i])
 
             # add our result to the confusion matrix
             if matrix:
-                matrix.insert(int(d[0]), int(np.argmax(self.outputs)))
+                matrix.insert(int(d[0]), int(np.argmax(self.outputs_layer)))
 
             # "If this is the correct prediction, don’t change the weights and
             # "go on to the next training example.
             if d[0] == np.argmax(self.outputs):
                 num_correct += 1
 
+            ##################
+            # BACK-PROPAGATION
+            ##################
+            #
             # "Otherwise, update all weights in the perceptron:
             # "    𝑤i ⟵ 𝑤i + 𝜂( 𝑡(i) − 𝑦(i) ) 𝑥i(i) , where
             # "
@@ -150,7 +167,7 @@ class NeuralNetwork:
                     d[0] = temp
 
         # return accuracy
-        return num_correct / len(data.data)
+        return num_correct / len(data.data)  # data.data or data?
 
     def run(self, data, matrix, epochs):
         train_accuracy = []
