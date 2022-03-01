@@ -21,6 +21,7 @@
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
+from math import exp
 
 
 # "Set the learning rate to 0.1 and the momentum to 0.9.
@@ -92,11 +93,18 @@ class NeuralNetwork:
         # "Recall that the bias unit is always set to 1,
         # "and the bias weight is treated like any other weight.
         self.hidden_layer_weights = np.array([np.random.uniform(-0.05, 0.05, 785) for _ in range(N + 1)])
-        self.hidden_layer = np.random.uniform(-0.05, 0.05, N + 1) # hidden units
+        self.hidden_layer = np.random.uniform(-0.05, 0.05, N + 1)  # hidden units
         self.hidden_layer[0] = 1  # hidden bias unit value
         self.output_layer_weights = np.array(np.random.uniform(-0.05, 0.05, N) for _ in range(10 + 1))
         self.output_layer = np.zeros(10)
         self.eta = eta
+
+    # "The activation function for each hidden and output unit is the sigmoid function
+    # σ(z) = 1 / ( 1 + e^(-z) )
+    @staticmethod
+    def sigmoid(value):
+        activation = 1 / (1 + exp(-value))
+        return activation
 
     # "Compute the accuracy on the training and test sets for this initial set of weights,
     # "to include in your plot. (Call this “epoch 0”.)
@@ -107,30 +115,56 @@ class NeuralNetwork:
         # FORWARD PROPAGATION
         #####################
 
+        # "For each node j in the hidden layer (i = input layer)
+        # h_j = σ ( Σ_i ( w_ji x_i + w_j0 ) )
+
+        # "For each node k in the output layer (j = hidden layer)
+        # o_k = σ ( Σ_j ( w_kj h_j + w_k0 ) )
+
         # for each item in the dataset
         for d in data:
-            # for each of the hidden units + bias
-            for i in range(N):
+
+            # "For each node j in the hidden layer (i = input layer)
+            # h_j = σ ( Σ_i ( w_ji x_i + w_j0 ) )
+            for j in range(N):
                 # save the true value and replace with input bias
                 temp = d[0]
                 d[0] = 1
+
                 # Compute 𝒘 ∙ 𝒙 (i) at each hidden unit.
-                self.hidden_layer[i + 1] = np.dot(self.hidden_layer_weights[i], d)  # +1 to skip bias unit
+                # self.hidden_layer[j + 1] = np.dot(self.hidden_layer_weights[j], d)  # +1 to skip bias unit
+
+                total = 0
+                for i in range(d):
+                    total += np.dot(self.hidden_layer_weights[j + 1][i], d[i]) + self.hidden_layer_weights[0]
+
                 d[0] = temp
 
-            # for each of the output units + bias
-            for i in range(10):
+                # apply the sigmoid activation function to the result
+                # self.hidden_layer[j + 1] = self.sigmoid(self.hidden_layer[j + 1])
+                self.hidden_layer[j + 1] = self.sigmoid(total)
+
+            # "For each node k in the output layer (j = hidden layer)
+            # o_k = σ ( Σ_j ( w_kj h_j + w_k0 ) )
+            for k in range(10):
                 # the bias value is already built in to this array
                 # Compute 𝒘 ∙ 𝒙 (i) at each output unit.
-                self.output_layer[i] = np.dot(self.output_layer_weights[i], self.hidden_layer[i])
+                # self.output_layer[k] = np.dot(self.output_layer_weights[k], self.hidden_layer)
 
+                total = 0
+                for j in range(self.hidden_layer):
+                    total += np.dot(self.output_layer_weights[k + 1][j]) + self.output_layer_weights[0]
+
+                self.output_layer[k + 1] = self.sigmoid(total)
+
+            # (for report)
             # add our result to the confusion matrix
             if matrix:
-                matrix.insert(int(d[0]), int(np.argmax(self.outputs_layer)))
+                matrix.insert(int(d[0]), int(np.argmax(self.output_layer)))
 
             # "If this is the correct prediction, don’t change the weights and
             # "go on to the next training example.
-            if d[0] == np.argmax(self.outputs):
+            if d[0] == np.argmax(self.output_layer):
                 num_correct += 1
 
             ##################
@@ -153,18 +187,18 @@ class NeuralNetwork:
             # " even if the prediction was incorrect. That’s okay!)
             #
             #
-            elif not freeze:
-                # for each perceptron
-                for i in range(10):
-                    ti = 1 if i == d[0] else 0
-                    yi = 1 if self.outputs[i] > 0 else 0  # self.outputs[i] is already w dot x(i)
-                    # np.add(ETA*(ti - yi), self.weights) # self.weights, out=self.weights,
-
-                    # update the weights as a function of ti, yi, and the elements in both arrays
-                    temp = d[0]
-                    d[0] = 1
-                    self.weights[i] = np.array([(wi + self.eta*(ti - yi)*xii) for wi, xii in zip(self.weights[i], d)])
-                    d[0] = temp
+            # elif not freeze:
+            #     # for each perceptron
+            #     for i in range(10):
+            #         ti = 1 if i == d[0] else 0
+            #         yi = 1 if self.outputs[i] > 0 else 0  # self.outputs[i] is already w dot x(i)
+            #         # np.add(ETA*(ti - yi), self.weights) # self.weights, out=self.weights,
+            #
+            #         # update the weights as a function of ti, yi, and the elements in both arrays
+            #         temp = d[0]
+            #         d[0] = 1
+            #         self.weights[i] = np.array([(wi + self.eta*(ti - yi)*xii) for wi, xii in zip(self.weights[i], d)])
+            #         d[0] = temp
 
         # return accuracy
         return num_correct / len(data.data)  # data.data or data?
