@@ -29,7 +29,7 @@ ETA = 0.1
 MOMENTUM = 0.9
 
 # "Train your network for 50 epochs"
-MAX_EPOCHS = 50
+MAX_EPOCHS = 0
 
 
 # "Experiment 1: Vary number of hidden units.
@@ -44,8 +44,8 @@ class Data:
     def __init__(self):
         self.TRAIN = "data/mnist_train.csv"
         self.TEST = "data/mnist_test.csv"
-        self.training_data = self.load_set(self.TRAIN)
-        self.testing_data = self.load_set(self.TEST)
+        self.training_data, self.training_truth = self.load_set(self.TRAIN)
+        self.testing_data, self.testing_truth = self.load_set(self.TEST)
 
     def load_set(self, dataset):
         print("Reading '" + dataset + "' data set...")
@@ -58,14 +58,18 @@ class Data:
     @staticmethod
     def preprocess(data):
         max_value = 255
+        ground_truth = np.empty(len(data))
         print("Preprocessing data...")
-        # iterating one image at a time to save the true values
-        for image_data in data:
-            temp = image_data[0]
-            # no second loop here: preprocess the whole image at once
-            image_data /= max_value
-            image_data[0] = temp
-        return data
+        # iterating one image at a time
+        for i in range(len(data)):
+            # save the true value
+            true_values[i] = data[i][0]
+            # set the bias
+            data[i][0] = max_value  # (this will end up as 1)
+
+        # now it is safe to normalize ALL the image data at once
+        data /= max_value
+        return data, ground_truth
 
     def test(self):
         return self.testing_data
@@ -92,12 +96,27 @@ class NeuralNetwork:
         #
         # "Recall that the bias unit is always set to 1,
         # "and the bias weight is treated like any other weight.
-        self.hidden_layer_weights = np.array([np.random.uniform(-0.05, 0.05, 785) for _ in range(N + 1)])
-        self.hidden_layer = np.random.uniform(-0.05, 0.05, N + 1)  # hidden units
-        self.hidden_layer[0] = 1  # hidden bias unit value
-        self.output_layer_weights = np.array(np.random.uniform(-0.05, 0.05, N) for _ in range(10 + 1))
-        self.output_layer = np.zeros(10)
+        # self.hidden_layer_weights = np.array([np.random.uniform(-0.05, 0.05, 785) for _ in range(N + 1)])
+        # self.hidden_layer = np.random.uniform(-0.05, 0.05, N + 1)  # hidden units
+        # self.hidden_layer[0] = 1  # hidden bias unit value
+        # self.output_layer_weights = np.array(np.random.uniform(-0.05, 0.05, N) for _ in range(10 + 1))
+        # self.output_layer = np.zeros(10)
         self.eta = eta
+
+        # explicitly set the size of these arrays (for matrix multiplication)
+        # input layer - 1 * 785
+        # hidden layer weights - 785 * (N + 1)
+        # 	input layer dot hidden layer weights = 1 * (N + 1)
+        #
+        # hidden layer - 1 * (N + 1)
+        # output layer weights = (N + 1) * 10
+        # 	hidden layer dot output layer weights = 1 * 10
+        self.hidden_layer_weights = np.random.uniform(-0.05, 0.05, (785, N + 1))
+        self.hidden_layer = np.zeros((1, N+1))
+        self.hidden_layer[0] = 1  # bias
+        self.output_layer_weights = np.random.uniform(-0.05, 0.05, (N+1, 10))
+        self.output_layer = np.zeros((1, 10))
+
 
     # "The activation function for each hidden and output unit is the sigmoid function
     # σ(z) = 1 / ( 1 + e^(-z) )
@@ -124,6 +143,8 @@ class NeuralNetwork:
         # for each item in the dataset
         for d in data:
 
+
+
             # "For each node j in the hidden layer (i = input layer)
             # h_j = σ ( Σ_i ( w_ji x_i + w_j0 ) )
             for j in range(N):
@@ -132,16 +153,19 @@ class NeuralNetwork:
                 d[0] = 1
 
                 # Compute 𝒘 ∙ 𝒙 (i) at each hidden unit.
-                # self.hidden_layer[j + 1] = np.dot(self.hidden_layer_weights[j], d)  # +1 to skip bias unit
+                self.hidden_layer[j + 1] = np.dot(self.hidden_layer_weights[j], d)  # +1 to skip bias unit
 
-                total = 0
-                for i in range(d):
-                    total += np.dot(self.hidden_layer_weights[j + 1][i], d[i]) + self.hidden_layer_weights[0]
+                # total = 0
+                # for i in range(len(d)):
+                #     # total += np.dot(self.hidden_layer_weights[j + 1][i], d[i]) + self.hidden_layer_weights[0]
+                #     total += (self.hidden_layer_weights[j + 1][i] * d[i])\
+                #              + self.hidden_layer_weights[j + 1][0]
 
                 d[0] = temp
 
                 # apply the sigmoid activation function to the result
                 # self.hidden_layer[j + 1] = self.sigmoid(self.hidden_layer[j + 1])
+                print(total)
                 self.hidden_layer[j + 1] = self.sigmoid(total)
 
             # "For each node k in the output layer (j = hidden layer)
@@ -149,13 +173,15 @@ class NeuralNetwork:
             for k in range(10):
                 # the bias value is already built in to this array
                 # Compute 𝒘 ∙ 𝒙 (i) at each output unit.
-                # self.output_layer[k] = np.dot(self.output_layer_weights[k], self.hidden_layer)
+                self.output_layer[k] = np.dot(self.output_layer_weights[k], self.hidden_layer)
 
-                total = 0
-                for j in range(self.hidden_layer):
-                    total += np.dot(self.output_layer_weights[k + 1][j]) + self.output_layer_weights[0]
+                # total = 0
+                # for j in range(N):
+                #     # total += np.dot(self.output_layer_weights[k + 1][j], self.hidden_layer[j]) + self.output_layer_weights[0]
+                #     total += (self.output_layer_weights[k + 1][j + 1] * self.hidden_layer[j + 1]) \
+                #              + self.output_layer_weights[k + 1][0]
 
-                self.output_layer[k + 1] = self.sigmoid(total)
+                self.output_layer[k] = self.sigmoid(total)
 
             # (for report)
             # add our result to the confusion matrix
