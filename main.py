@@ -23,8 +23,9 @@ from matplotlib import pyplot as plt
 from math import exp
 
 # set some data caps since this takes so long
-MAX_TRAIN = 1000  # max 60,000
-MAX_TEST = 100  # max 10,000
+# 0 = no cap
+MAX_TRAIN = 0  # max 60,000
+MAX_TEST = 0  # max 10,000
 
 
 # "Set the learning rate to 0.1 and the momentum to 0.9.
@@ -197,16 +198,19 @@ class NeuralNetwork:
                 # "Hidden to Output layer: For each weight w_kj
                 # w_kj = w_kj + Δw_kj
                 # Δw_kj = η * δ_k * h_j
-                for k in range(10):
-                    for j in range(N):
-                        self.output_layer_weights[j][k] += self.eta * output_error[k] * self.hidden_layer[j]
+                # for k in range(10):
+                #    for j in range(N):
+                #        self.output_layer_weights[j][k] += self.eta * output_error[k] * self.hidden_layer[j]
+                self.output_layer_weights += self.eta * (self.hidden_layer.reshape(N+1, 1) @ output_error.reshape(1, 10))
 
                 # "Input to Hidden layer: For each weight w_ji
                 # w_ji = w_ji + Δw_ji
                 # Δw_ji = η * δ_j * x_i
-                for j in range(N + 1):
-                    for i in range(785):
-                        self.hidden_layer_weights[i][j] += self.eta * hidden_error[j] * d[i]
+                # for j in range(N + 1):
+                #    for i in range(785):
+                #        self.hidden_layer_weights[i][j] += self.eta * hidden_error[j] * d[i]
+                # self.hidden_layer_weights = self.eta * (hidden_error.reshape(N+1, 1) @ d.reshape(1, 785))
+                self.hidden_layer_weights += self.eta * (d.reshape(785, 1) @ hidden_error.reshape(1, N+1))
 
         # return accuracy
         return num_correct / len(data[0])
