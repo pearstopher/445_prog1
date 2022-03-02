@@ -23,8 +23,8 @@ from matplotlib import pyplot as plt
 from math import exp
 
 # set some data caps since this takes so long
-MAX_TRAIN = 1000
-MAX_TEST = 100
+MAX_TRAIN = 1000  # max 60,000
+MAX_TEST = 100  # max 10,000
 
 
 # "Set the learning rate to 0.1 and the momentum to 0.9.
@@ -32,7 +32,7 @@ ETA = 0.1
 MOMENTUM = 0.9
 
 # "Train your network for 50 epochs"
-MAX_EPOCHS = 30
+MAX_EPOCHS = 20
 
 
 # "Experiment 1: Vary number of hidden units.
@@ -117,7 +117,7 @@ class NeuralNetwork:
         self.hidden_layer = np.zeros((N+1))
         self.hidden_layer[0] = 1  # bias
         self.output_layer_weights = np.random.uniform(-0.05, 0.05, (N+1, 10))
-        self.output_layer = np.zeros((10))
+        self.output_layer = np.zeros(10)
 
     # "The activation function for each hidden and output unit is the sigmoid function
     # σ(z) = 1 / ( 1 + e^(-z) )
@@ -204,7 +204,7 @@ class NeuralNetwork:
                 # "Input to Hidden layer: For each weight w_ji
                 # w_ji = w_ji + Δw_ji
                 # Δw_ji = η * δ_j * x_i
-                for j in range(N):
+                for j in range(N + 1):
                     for i in range(785):
                         self.hidden_layer_weights[i][j] += self.eta * hidden_error[j] * d[i]
 
