@@ -1,11 +1,10 @@
-# CS445 Homework 1 Problem 11
+# CS445 Programming Assignment #1
 # Christopher Juncker
-# This is a sample Python script.
-
-# "11. This is a short coding problem. You will use a perceptron with 785 inputs (including bias input)
-# "and 10 outputs to learn to classify the handwritten digits in the MNIST dataset
-# "(http://yann.lecun.com/exdb/mnist/). See the class slides for details of the perceptron architecture
-# "and perceptron learning algorithm.
+#
+# "For this homework you will implement a two-layer neural network (i.e, one hidden-layer) to
+# "perform the handwritten digit recognition task of Homework 1. Please write your own neural
+# "network code; don’t use code written by others, though you can refer to other code if you
+# "need help understanding the algorithm. You may use whatever programming language you prefer.
 #
 #
 # MNIST data in CSV format:
@@ -19,7 +18,7 @@
 #
 
 import numpy as np
-import pandas as pd
+from pandas import read_csv
 from matplotlib import pyplot as plt
 from math import exp
 
@@ -53,7 +52,7 @@ class Data:
 
     def load_set(self, dataset):
         print("Reading '" + dataset + "' data set...")
-        data = pd.read_csv(dataset).to_numpy(dtype="float")
+        data = read_csv(dataset).to_numpy(dtype="float")
         return self.preprocess(data)
 
     # "Preprocessing: Scale each data value to be between 0 and 1.
