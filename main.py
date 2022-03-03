@@ -24,8 +24,8 @@ from math import exp
 
 # set some data caps since this takes so long
 # 0 = no cap
-MAX_TRAIN = 1000  # max 60,000
-MAX_TEST = 200  # max 10,000
+MAX_TRAIN = 0  # max 60,000
+MAX_TEST = 0  # max 10,000
 
 
 # "Set the learning rate to 0.1 and the momentum to 0.9.
@@ -39,7 +39,7 @@ MAX_EPOCHS = 50
 # "Experiment 1: Vary number of hidden units.
 # "Do experiments with n = 20, 50, and 100.
 # "(Remember to also include a bias unit with weights to every hidden and output node.)
-N = 20
+N = 100
 
 
 # class for loading and preprocessing MNIST data
@@ -116,9 +116,11 @@ class NeuralNetwork:
         #
         # "Choose small random initial weights, 𝑤! ∈ [−.05, .05]
         self.hidden_layer_weights = np.random.uniform(-0.05, 0.05, (785, N + 1))
+        self.hidden_layer_weights_change = np.zeros((785, N + 1))  # save momentum
         self.hidden_layer = np.zeros((N+1))
         self.hidden_layer[0] = 1  # bias
         self.output_layer_weights = np.random.uniform(-0.05, 0.05, (N+1, 10))
+        self.output_layer_weights_change = np.zeros((N+1, 10))  # save momentum
         self.output_layer = np.zeros(10)
 
     # "The activation function for each hidden and output unit is the sigmoid function
@@ -199,14 +201,18 @@ class NeuralNetwork:
                 # "Hidden to Output layer: For each weight w_kj
                 # w_kj = w_kj + Δw_kj
                 # Δw_kj = η * δ_k * h_j
-                self.output_layer_weights += self.eta * \
-                    (self.hidden_layer.reshape(N+1, 1) @ output_error.reshape(1, 10))
+                self.output_layer_weights_change = \
+                    self.eta * (self.hidden_layer.reshape(N+1, 1) @ output_error.reshape(1, 10)) + \
+                    self.momentum * self.output_layer_weights_change
+                self.output_layer_weights += self.output_layer_weights_change
 
                 # "Input to Hidden layer: For each weight w_ji
                 # w_ji = w_ji + Δw_ji
                 # Δw_ji = η * δ_j * x_i
-                self.hidden_layer_weights += self.eta * \
-                    (d.reshape(785, 1) @ hidden_error.reshape(1, N+1))
+                self.hidden_layer_weights_change = \
+                    self.eta * (d.reshape(785, 1) @ hidden_error.reshape(1, N+1)) + \
+                    self.momentum * self.hidden_layer_weights_change
+                self.hidden_layer_weights += self.hidden_layer_weights_change
 
         # return accuracy
         return num_correct / len(data[0])
