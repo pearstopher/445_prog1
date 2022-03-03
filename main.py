@@ -24,8 +24,8 @@ from math import exp
 
 # set some data caps since this takes so long
 # 0 = no cap
-MAX_TRAIN = 0  # max 60,000
-MAX_TEST = 0  # max 10,000
+MAX_TRAIN = 1000  # max 60,000
+MAX_TEST = 200  # max 10,000
 
 
 # "Set the learning rate to 0.1 and the momentum to 0.9.
@@ -33,7 +33,7 @@ ETA = 0.1
 MOMENTUM = 0.9
 
 # "Train your network for 50 epochs"
-MAX_EPOCHS = 20
+MAX_EPOCHS = 50
 
 
 # "Experiment 1: Vary number of hidden units.
@@ -98,10 +98,11 @@ class ConfusionMatrix:
 # "Your neural network will have 784 inputs, one hidden layer with
 # "n hidden units (where n is a parameter of your program), and 10 output units.
 class NeuralNetwork:
-    def __init__(self, eta):
+    def __init__(self, eta, momentum):
         print("Initializing neural network...")
-        # set learning rate
+        # set learning rate and momentum
         self.eta = eta
+        self.momentum = momentum
 
         # explicitly set the size of these arrays (for matrix multiplication / my own sanity)
         # input layer:                              1 x 785
@@ -236,7 +237,7 @@ class NeuralNetwork:
 def main():
 
     d = Data()
-    p = NeuralNetwork(ETA)
+    p = NeuralNetwork(ETA, MOMENTUM)
     c = ConfusionMatrix()
 
     results = p.run(d, c, MAX_EPOCHS)
