@@ -76,11 +76,23 @@ class Data:
         return data, ground_truth
 
     def test(self):
+        # randomly permute the test data
+        indices = np.arange(self.testing_data.shape[0])
+        np.random.shuffle(indices)
+        self.testing_data = self.testing_data[indices]
+        self.testing_truth = self.testing_truth[indices]
+
         if MAX_TEST:
             return self.testing_data[0:MAX_TEST], self.testing_truth[0:MAX_TEST]
         return self.testing_data, self.testing_truth
 
     def train(self):
+        # randomly permute the training data
+        indices = np.arange(self.training_data.shape[0])
+        np.random.shuffle(indices)
+        self.training_data = self.training_data[indices]
+        self.training_truth = self.training_truth[indices]
+
         if MAX_TRAIN:
             return self.training_data[0:MAX_TRAIN], self.training_truth[0:MAX_TRAIN]
         return self.training_data, self.training_truth
@@ -223,14 +235,14 @@ class NeuralNetwork:
 
         print("Epoch 0: ", end="")
         train_accuracy.append(self.compute_accuracy(data.train(), True))
-        test_accuracy.append(self.compute_accuracy(data.train(), True))
+        test_accuracy.append(self.compute_accuracy(data.test(), True))
         print("Training Set:\tAccuracy:", "{:0.5f}".format(train_accuracy[0]), end="\t")
         print("Testing Set:\tAccuracy:", "{:0.5f}".format(test_accuracy[0]))
 
         for i in range(epochs):
             print("Epoch " + str(i + 1) + ": ", end="")
             train_accuracy.append(self.compute_accuracy(data.train()))
-            test_accuracy.append(self.compute_accuracy(data.train(), True))
+            test_accuracy.append(self.compute_accuracy(data.test(), True))
             print("Training Set:\tAccuracy:", "{:0.5f}".format(train_accuracy[i + 1]), end="\t")
             print("Testing Set:\tAccuracy:", "{:0.5f}".format(test_accuracy[i + 1]))
 
