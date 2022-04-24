@@ -24,7 +24,7 @@ from math import exp
 
 # set some data caps since this takes so long
 # 0 = no cap
-MAX_TRAIN = 0  # max 60,000
+MAX_TRAIN = 30000  # max 60,000
 MAX_TEST = 0  # max 10,000
 
 
@@ -188,8 +188,6 @@ class NeuralNetwork:
                 # δ_k <- o_k (1 - o_k) (t_k - o_k)
                 #
                 # t = true value
-                # I am guessing -1 is true value when it's wrong
-                # and 1 is true value when its right
                 for k, o_k in enumerate(self.output_layer):
                     # "Set the target value tk for output unit k to 0.9 if the input class is the kth class,
                     # "0.1 otherwise
@@ -202,13 +200,16 @@ class NeuralNetwork:
                 # δ_j <- h_j (1 - h_j) (Σ_k ( w_kj * δ_k ) )
                 for j, h_j in enumerate(self.hidden_layer):
                     # calculate sum
-                    total = 0
+                    # total = 0
                     # print(self.output_layer)
-                    for k in range(len(self.output_layer)):
-                        total += self.output_layer_weights[j][k] * output_error[k]
+                    # for k in range(len(self.output_layer)):
+                    #    total += self.output_layer_weights[j][k] * output_error[k]
 
-                    error = h_j * (1 - h_j) * total
-                    hidden_error[j] = error  # oops was appending still
+                    # error = h_j * (1 - h_j) * total
+                    # hidden_error[j] = error  # oops was appending still
+
+                    hidden_error[j] = np.dot(self.output_layer_weights[j], output_error)
+                    hidden_error[j] *= h_j * (1 - h_j)
 
                 # "Hidden to Output layer: For each weight w_kj
                 # w_kj = w_kj + Δw_kj
@@ -247,7 +248,7 @@ class NeuralNetwork:
             print("Testing Set:\tAccuracy:", "{:0.5f}".format(test_accuracy[i + 1]))
 
         # "Confusion matrix on the test set, after training has been completed.
-        self.compute_accuracy(data.train(), True, matrix)
+        self.compute_accuracy(data.test(), True, matrix)
 
         return train_accuracy, test_accuracy
 
