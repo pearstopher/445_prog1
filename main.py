@@ -22,15 +22,8 @@ from pandas import read_csv
 from matplotlib import pyplot as plt
 from math import exp
 
-# set some data caps since this takes so long
-# 0 = no cap
-MAX_TRAIN = 30000  # max 60,000
-MAX_TEST = 0  # max 10,000
-
-
-# "Set the learning rate to 0.1 and the momentum to 0.9.
+# "Set the learning rate to 0.1
 ETA = 0.1
-MOMENTUM = 0.9
 
 # "Train your network for 50 epochs"
 MAX_EPOCHS = 50
@@ -75,26 +68,26 @@ class Data:
         data /= max_value
         return data, ground_truth
 
-    def test(self):
+    def test(self, limit=0):
         # randomly permute the test data
         indices = np.arange(self.testing_data.shape[0])
         np.random.shuffle(indices)
         self.testing_data = self.testing_data[indices]
         self.testing_truth = self.testing_truth[indices]
 
-        if MAX_TEST:
-            return self.testing_data[0:MAX_TEST], self.testing_truth[0:MAX_TEST]
+        if limit:
+            return self.testing_data[0:limit], self.testing_truth[0:limit]
         return self.testing_data, self.testing_truth
 
-    def train(self):
+    def train(self, limit=0):
         # randomly permute the training data
         indices = np.arange(self.training_data.shape[0])
         np.random.shuffle(indices)
         self.training_data = self.training_data[indices]
         self.training_truth = self.training_truth[indices]
 
-        if MAX_TRAIN:
-            return self.training_data[0:MAX_TRAIN], self.training_truth[0:MAX_TRAIN]
+        if limit:
+            return self.training_data[0:limit], self.training_truth[0:limit]
         return self.training_data, self.training_truth
 
 
@@ -110,11 +103,13 @@ class ConfusionMatrix:
 # "Your neural network will have 784 inputs, one hidden layer with
 # "n hidden units (where n is a parameter of your program), and 10 output units.
 class NeuralNetwork:
-    def __init__(self, eta, momentum):
+    def __init__(self, hidden_units, momentum, training_examples):
         print("Initializing neural network...")
         # set learning rate and momentum
-        self.eta = eta
+        self.eta = ETA
+        self.hidden_units = hidden_units
         self.momentum = momentum
+        self.training_examples = training_examples
 
         # explicitly set the size of these arrays (for matrix multiplication / my own sanity)
         # input layer:                              1 x 785
@@ -127,12 +122,12 @@ class NeuralNetwork:
         #
         #
         # "Choose small random initial weights, 𝑤! ∈ [−.05, .05]
-        self.hidden_layer_weights = np.random.uniform(-0.05, 0.05, (785, N + 1))
-        self.hidden_layer_weights_change = np.zeros((785, N + 1))  # save momentum
-        self.hidden_layer = np.zeros((N+1))
+        self.hidden_layer_weights = np.random.uniform(-0.05, 0.05, (785, self.hidden_units + 1))
+        self.hidden_layer_weights_change = np.zeros((785, self.hidden_units + 1))  # save momentum
+        self.hidden_layer = np.zeros((self.hidden_units+1))
         self.hidden_layer[0] = 1  # bias
-        self.output_layer_weights = np.random.uniform(-0.05, 0.05, (N+1, 10))
-        self.output_layer_weights_change = np.zeros((N+1, 10))  # save momentum
+        self.output_layer_weights = np.random.uniform(-0.05, 0.05, (self.hidden_units + 1, 10))
+        self.output_layer_weights_change = np.zeros((self.hidden_units + 1, 10))  # save momentum
         self.output_layer = np.zeros(10)
 
     # "The activation function for each hidden and output unit is the sigmoid function
@@ -182,7 +177,7 @@ class NeuralNetwork:
 
             elif not freeze:
                 output_error = np.empty(10)
-                hidden_error = np.empty(N + 1)
+                hidden_error = np.empty(self.hidden_units + 1)
 
                 # "For each output unit k, calculate error term δ_k
                 # δ_k <- o_k (1 - o_k) (t_k - o_k)
@@ -215,7 +210,7 @@ class NeuralNetwork:
                 # w_kj = w_kj + Δw_kj
                 # Δw_kj = η * δ_k * h_j
                 self.output_layer_weights_change = \
-                    self.eta * (self.hidden_layer.reshape(N+1, 1) @ output_error.reshape(1, 10)) + \
+                    self.eta * (self.hidden_layer.reshape(self.hidden_units + 1, 1) @ output_error.reshape(1, 10)) + \
                     self.momentum * self.output_layer_weights_change
                 self.output_layer_weights += self.output_layer_weights_change
 
@@ -223,7 +218,7 @@ class NeuralNetwork:
                 # w_ji = w_ji + Δw_ji
                 # Δw_ji = η * δ_j * x_i
                 self.hidden_layer_weights_change = \
-                    self.eta * (d.reshape(785, 1) @ hidden_error.reshape(1, N+1)) + \
+                    self.eta * (d.reshape(785, 1) @ hidden_error.reshape(1, self.hidden_units + 1)) + \
                     self.momentum * self.hidden_layer_weights_change
                 self.hidden_layer_weights += self.hidden_layer_weights_change
 
@@ -235,14 +230,14 @@ class NeuralNetwork:
         test_accuracy = []
 
         print("Epoch 0: ", end="")
-        train_accuracy.append(self.compute_accuracy(data.train(), True))
+        train_accuracy.append(self.compute_accuracy(data.train(self.training_examples), True))
         test_accuracy.append(self.compute_accuracy(data.test(), True))
         print("Training Set:\tAccuracy:", "{:0.5f}".format(train_accuracy[0]), end="\t")
         print("Testing Set:\tAccuracy:", "{:0.5f}".format(test_accuracy[0]))
 
         for i in range(epochs):
             print("Epoch " + str(i + 1) + ": ", end="")
-            train_accuracy.append(self.compute_accuracy(data.train()))
+            train_accuracy.append(self.compute_accuracy(data.train(self.training_examples)))
             test_accuracy.append(self.compute_accuracy(data.test(), True))
             print("Training Set:\tAccuracy:", "{:0.5f}".format(train_accuracy[i + 1]), end="\t")
             print("Testing Set:\tAccuracy:", "{:0.5f}".format(test_accuracy[i + 1]))
@@ -255,30 +250,45 @@ class NeuralNetwork:
 
 def main():
 
+    # run all of the exercises at once
+    # (hidden units, momentum, training examples)
+    trials = [(1, 0.9,  100),
+              (50,  0.9,  60000),
+              (25,  0.9,  60000),
+              (100, 0.5,  60000),
+              (100, 0.25, 60000),
+              (100, 0,    60000),
+              (100, 0.9,  30000),
+              (100, 0.9,  15000),
+              ]
+
     d = Data()
-    p = NeuralNetwork(ETA, MOMENTUM)
-    c = ConfusionMatrix()
 
-    results = p.run(d, c, MAX_EPOCHS)
+    for w, (x, y, z) in enumerate(trials):
+        p = NeuralNetwork(x, y, z)
+        c = ConfusionMatrix()
 
-    # plot the training / testing accuracy
-    plt.plot(list(range(MAX_EPOCHS + 1)), results[0])
-    plt.plot(list(range(MAX_EPOCHS + 1)), results[1])
-    plt.xlim([0, MAX_EPOCHS])
-    plt.ylim([0, 1])
-    plt.show()
+        results = p.run(d, c, MAX_EPOCHS)
 
-    # plot the confusion matrix
-    for i in range(10):
-        plt.plot([-0.5, 9.5], [i+0.5, i+0.5], i, color='xkcd:chocolate', linewidth=1)  # nice colors
-        plt.plot([i+0.5, i+0.5], [-0.5, 9.5], i, color='xkcd:chocolate', linewidth=1)
-        for j in range(10):
-            plt.scatter(i, j, s=(c.matrix[i][j] / 3), c="xkcd:fuchsia", marker="s")  # or chartreuse
-            plt.annotate(int(c.matrix[i][j]), (i, j))
-    plt.xlim([-0.5, 9.5])
-    plt.ylim([-0.5, 9.5])
-    plt.gca().invert_yaxis()
-    plt.show()
+        # plot the training / testing accuracy
+        plt.plot(list(range(MAX_EPOCHS + 1)), results[0])
+        plt.plot(list(range(MAX_EPOCHS + 1)), results[1])
+        plt.xlim([0, MAX_EPOCHS])
+        plt.ylim([0, 1])
+        plt.savefig("images/exercise" + str(w+1) + "_" + str(x) + "_" + str(y) + "_" + str(z) + ".png")
+
+        # plot the confusion matrix
+        plt.clf()
+        for i in range(10):
+            plt.plot([-0.5, 9.5], [i+0.5, i+0.5], i, color='xkcd:chocolate', linewidth=1)  # nice colors
+            plt.plot([i+0.5, i+0.5], [-0.5, 9.5], i, color='xkcd:chocolate', linewidth=1)
+            for j in range(10):
+                plt.scatter(i, j, s=(c.matrix[i][j] / 3), c="xkcd:fuchsia", marker="s")  # or chartreuse
+                plt.annotate(int(c.matrix[i][j]), (i, j))
+        plt.xlim([-0.5, 9.5])
+        plt.ylim([-0.5, 9.5])
+        plt.gca().invert_yaxis()
+        plt.savefig("images/exercise" + str(w+1) + "_" + str(x) + "_" + str(y) + "_" + str(z) + "_cm.png")
 
 
 if __name__ == '__main__':
