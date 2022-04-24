@@ -24,15 +24,8 @@ from math import exp
 
 # "Set the learning rate to 0.1
 ETA = 0.1
-
 # "Train your network for 50 epochs"
 MAX_EPOCHS = 50
-
-
-# "Experiment 1: Vary number of hidden units.
-# "Do experiments with n = 20, 50, and 100.
-# "(Remember to also include a bias unit with weights to every hidden and output node.)
-N = 100
 
 
 # class for loading and preprocessing MNIST data
@@ -68,15 +61,13 @@ class Data:
         data /= max_value
         return data, ground_truth
 
-    def test(self, limit=0):
+    def test(self):
         # randomly permute the test data
         indices = np.arange(self.testing_data.shape[0])
         np.random.shuffle(indices)
         self.testing_data = self.testing_data[indices]
         self.testing_truth = self.testing_truth[indices]
 
-        if limit:
-            return self.testing_data[0:limit], self.testing_truth[0:limit]
         return self.testing_data, self.testing_truth
 
     def train(self, limit=0):
@@ -96,8 +87,8 @@ class ConfusionMatrix:
     def __init__(self):
         self.matrix = np.zeros((10, 10))
 
-    def insert(self, true, pred):
-        self.matrix[true][pred] += 1
+    def insert(self, true, predicted):
+        self.matrix[true][predicted] += 1
 
 
 # "Your neural network will have 784 inputs, one hidden layer with
@@ -164,7 +155,7 @@ class NeuralNetwork:
             # (for report)
             # add our result to the confusion matrix
             if matrix:
-                matrix.insert(int(np.argmax(self.output_layer)), int(truth), )  # x=pred, y=true
+                matrix.insert(int(np.argmax(self.output_layer)), int(truth), )  # x=predicted, y=true
 
             # "If this is the correct prediction, don’t change the weights and
             # "go on to the next training example.
@@ -194,15 +185,6 @@ class NeuralNetwork:
                 # "for each hidden unit j, calculate error term δ_j (k = output units)
                 # δ_j <- h_j (1 - h_j) (Σ_k ( w_kj * δ_k ) )
                 for j, h_j in enumerate(self.hidden_layer):
-                    # calculate sum
-                    # total = 0
-                    # print(self.output_layer)
-                    # for k in range(len(self.output_layer)):
-                    #    total += self.output_layer_weights[j][k] * output_error[k]
-
-                    # error = h_j * (1 - h_j) * total
-                    # hidden_error[j] = error  # oops was appending still
-
                     hidden_error[j] = np.dot(self.output_layer_weights[j], output_error)
                     hidden_error[j] *= h_j * (1 - h_j)
 
@@ -249,10 +231,12 @@ class NeuralNetwork:
 
 
 def main():
+    # load the data (just once)
+    d = Data()
 
-    # run all of the exercises at once
+    # run all of the exercises in a row
     # (hidden units, momentum, training examples)
-    trials = [(1, 0.9,  100),
+    trials = [(100, 0.9,  60000),
               (50,  0.9,  60000),
               (25,  0.9,  60000),
               (100, 0.5,  60000),
@@ -262,8 +246,6 @@ def main():
               (100, 0.9,  15000),
               ]
 
-    d = Data()
-
     for w, (x, y, z) in enumerate(trials):
         p = NeuralNetwork(x, y, z)
         c = ConfusionMatrix()
@@ -271,6 +253,7 @@ def main():
         results = p.run(d, c, MAX_EPOCHS)
 
         # plot the training / testing accuracy
+        plt.figure(figsize=(10, 10))
         plt.plot(list(range(MAX_EPOCHS + 1)), results[0])
         plt.plot(list(range(MAX_EPOCHS + 1)), results[1])
         plt.xlim([0, MAX_EPOCHS])
@@ -283,7 +266,7 @@ def main():
             plt.plot([-0.5, 9.5], [i+0.5, i+0.5], i, color='xkcd:chocolate', linewidth=1)  # nice colors
             plt.plot([i+0.5, i+0.5], [-0.5, 9.5], i, color='xkcd:chocolate', linewidth=1)
             for j in range(10):
-                plt.scatter(i, j, s=(c.matrix[i][j] / 3), c="xkcd:fuchsia", marker="s")  # or chartreuse
+                plt.scatter(i, j, s=(c.matrix[i][j] * 2.7), c="xkcd:fuchsia", marker="s")  # or chartreuse
                 plt.annotate(int(c.matrix[i][j]), (i, j))
         plt.xlim([-0.5, 9.5])
         plt.ylim([-0.5, 9.5])
