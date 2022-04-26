@@ -17,6 +17,7 @@
 #
 #
 
+import os
 import numpy as np
 from pandas import read_csv
 from matplotlib import pyplot as plt
@@ -251,6 +252,12 @@ def main():
         c = ConfusionMatrix()
 
         results = p.run(d, c, MAX_EPOCHS)
+
+        # make sure the /images/ directory exists
+        d = "images"
+        exist = os.path.exists(d)
+        if not exist:
+            os.makedirs(d)
 
         # plot the training / testing accuracy
         plt.figure(figsize=(10, 10))
