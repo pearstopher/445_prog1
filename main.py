@@ -248,16 +248,19 @@ def main():
               ]
 
     for w, (x, y, z) in enumerate(trials):
+        print("\nTest", w+1, "/ 8: Training the network with", x, "hidden units,",
+              y, "momentum, and", z, "training examples.\n")
+
         p = NeuralNetwork(x, y, z)
         c = ConfusionMatrix()
 
         results = p.run(d, c, MAX_EPOCHS)
 
         # make sure the /images/ directory exists
-        d = "images"
-        exist = os.path.exists(d)
+        img_dir = "images"
+        exist = os.path.exists(img_dir)
         if not exist:
-            os.makedirs(d)
+            os.makedirs(img_dir)
 
         # plot the training / testing accuracy
         plt.figure(figsize=(10, 10))
